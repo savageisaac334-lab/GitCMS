@@ -1,77 +1,80 @@
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Parser {
-    public static void main(String[] args) {
-        // Define paths for our CMS directories
-        File contentDir = new File("content");
-        File outputDir = new File("output");
 
-        // Make sure the output folder exists
+    public static void main(String[] args) {
+        File contentDir = new File("Content");
+        File outputDir = new File("Output");
+
+        // Create Output directory if it doesn't exist
         if (!outputDir.exists()) {
             outputDir.mkdir();
         }
 
-        // Check if the content directory exists and look for files
-        if (contentDir.exists() && contentDir.isDirectory()) {
-            File[] files = contentDir.listFiles((dir, name) -> name.endsWith(".txt"));
-
-            if (files == null || files.length == 0) {
-                System.out.println("No content files found! Please add a .txt file inside the 'content' folder.");
-                return;
-            }
-
-            for (File file : files) {
-                parseFile(file, outputDir);
-            }
-        } else {
-            System.out.println("The 'content' folder is missing. Please create it.");
+        // 1. Scan Content folder for all .txt files to build the navigation links
+        File[] files = contentDir.listFiles((dir, name) -> name.endsWith(".txt"));
+        if (files == null || files.length == 0) {
+            System.out.println("No content files found in 'Content' folder!");
+            return;
         }
-    }
 
-    private static void parseFile(File inputFile, File outputDir) {
-        String fileName = inputFile.getName().replace(".txt", ".html");
-        File outputFile = new File(outputDir, fileName);
+        List<String> pageNames = new ArrayList<>();
+        for (File file : files) {
+            // Strip the .txt extension to get the page name (e.g., "index", "about")
+            String nameWithoutExtension = file.getName().substring(0, file.getName().lastIndexOf('.'));
+            pageNames.add(nameWithoutExtension);
+        }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
-             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+        // 2. Generate an HTML file for each text file
+        for (File file : files) {
+            String pageName = file.getName().substring(0, file.getName().lastIndexOf('.'));
+            File outputFile = new File(outputDir, pageName + ".html");
 
-            String title = reader.readLine(); // The very first line of our text file will be the title
-            if (title == null) title = "Untitled Page";
+            try (BufferedReader reader = new BufferedReader(new FileReader(file));
+                 FileWriter writer = new FileWriter(outputFile)) {
 
-            // Write the HTML and basic CSS styling to the output file
-            writer.write("<!DOCTYPE html>\n<html>\n<head>\n");
-            writer.write("<title>" + title + "</title>\n");
-            writer.write("<style>\n");
-            writer.write("body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; padding: 40px; max-width: 800px; margin: auto; background-color: #f4f7f6; color: #333; }\n");
-            writer.write("h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }\n");
-            writer.write("p { font-size: 1.1em; color: #555; }\n");
-            writer.write("footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 0.9em; color: #777; }\n");
-            writer.write("</style>\n</head>\n<body>\n");
+                String title = reader.readLine(); // First line is the Title
+                String content = reader.readLine(); // Second line is the body Content
 
-            // Add the main title heading
-            writer.write("<h1>" + title + "</h1>\n");
+                // Generate HTML with a shared navigation bar
+                writer.write("<!DOCTYPE html>\n<html>\n<head>\n");
+                writer.write("    <title>" + title + "</title>\n");
+                writer.write("    <style>\n");
+                writer.write("        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; background-color: #f4f4f9; color: #333; }\n");
+                writer.write("        nav { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; }\n");
+                writer.write("        nav a { color: white; margin-right: 20px; text-decoration: none; font-weight: bold; text-transform: capitalize; }\n");
+                writer.write("        nav a:hover { text-decoration: underline; }\n");
+                writer.write("        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }\n");
+                writer.write("        h1 { color: #111; }\n");
+                writer.write("    </style>\n</head>\n<body>\n");
 
-            // Read the remaining lines as paragraph text
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (!line.trim().isEmpty()) {
-                    writer.write("<p>" + line + "</p>\n");
+                // Generate Navigation Bar dynamically based on all pages found
+                writer.write("    <nav>\n");
+                for (String p : pageNames) {
+                    writer.write("        <a href=\"" + p + ".html\">" + p + "</a>\n");
                 }
+                writer.write("    </nav>\n");
+
+                // Page Content
+                writer.write("    <div class=\"container\">\n");
+                writer.write("        <h1>" + title + "</h1>\n");
+                writer.write("        <p>" + content + "</p>\n");
+                writer.write("    </div>\n");
+
+                writer.write("</body>\n</html>");
+
+                System.out.println("Successfully generated: " + outputFile.getName());
+
+            } catch (IOException e) {
+                System.out.println("Error processing file: " + file.getName());
+                e.printStackTrace();
             }
-
-            // Close the HTML tags
-            writer.write("<footer>Generated automatically by GitCMS</footer>\n");
-            writer.write("</body>\n</html>");
-
-            System.out.println("Successfully generated: " + outputFile.getAbsolutePath());
-
-        } catch (IOException e) {
-            System.err.println("Error processing file " + inputFile.getName() + ": " + e.getMessage());
         }
     }
 }
