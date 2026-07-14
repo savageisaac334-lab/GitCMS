@@ -1,107 +1,140 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.*;
+import java.util.*;
 
 public class Parser {
-
     public static void main(String[] args) {
+        // Define paths for input and output folders
         File contentDir = new File("Content");
-        File outputDir = new File(".");
+        File outputDir = new File("Output");
 
         // Create Output directory if it doesn't exist
         if (!outputDir.exists()) {
             outputDir.mkdir();
         }
 
-        // 1. Scan Content folder for all .txt files to build the navigation links
+        // 1. Scan Content folder for all .txt files
         File[] files = contentDir.listFiles((dir, name) -> name.endsWith(".txt"));
         if (files == null || files.length == 0) {
             System.out.println("No content files found in 'Content' folder!");
             return;
         }
 
+        // Create lists to hold parsed pages and blog posts
+        List<BlogPost> posts = new ArrayList<>();
         List<String> pageNames = new ArrayList<>();
+
+        // 2. Parse date, title, and content from each text file
         for (File file : files) {
-            // Strip the .txt extension to get the page name (e.g., "index", "about")
-            String nameWithoutExtension = file.getName().substring(0, file.getName().lastIndexOf('.'));
-            pageNames.add(nameWithoutExtension);
-        }
+            String pageName = file.getName().substring(0, file.getName().lastIndexOf("."));
+            pageNames.add(pageName);
 
-        // 2. Generate an HTML file for each text file
-        for (File file : files) {
-            String pageName = file.getName().substring(0, file.getName().lastIndexOf('.'));
-            File outputFile = new File(outputDir, pageName + ".html");
-
-            try (BufferedReader reader = new BufferedReader(new FileReader(file));
-                 FileWriter writer = new FileWriter(outputFile)) {
-
-                String title = reader.readLine(); // First line is the Title
-                String content = reader.readLine(); // Second line is the body Content
-
-                // Generate HTML with a premium, modern design layout
-                writer.write("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
-                writer.write("    <meta charset=\"UTF-8\">\n");
-                writer.write("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-                writer.write("    <title>" + title + "</title>\n");
-                writer.write("    <style>\n");
-                writer.write("        * { box-sizing: border-box; margin: 0; padding: 0; }\n");
-                writer.write("        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; line-height: 1.6; padding-bottom: 60px; }\n");
-                writer.write("        \n");
-                writer.write("        /* Navigation Bar Styling */\n");
-                writer.write("        nav { background: #1a1a1a; padding: 0 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); display: flex; justify-content: center; position: sticky; top: 0; z-index: 100; }\n");
-                writer.write("        .nav-container { display: flex; width: 100%; max-width: 800px; justify-content: flex-start; align-items: center; height: 60px; }\n");
-                writer.write("        nav a { color: #cccccc; margin-right: 30px; text-decoration: none; font-weight: 600; font-size: 1rem; text-transform: capitalize; transition: color 0.3s ease, border-bottom 0.3s ease; padding: 18px 0; border-bottom: 3px solid transparent; }\n");
-                writer.write("        nav a:hover { color: #ffffff; border-bottom: 3px solid #00bcd4; }\n");
-                writer.write("        \n");
-                writer.write("        /* Active link indicator simple match */\n");
-                writer.write("        nav a.active { color: #ffffff; border-bottom: 3px solid #00bcd4; }\n");
-                writer.write("        \n");
-                writer.write("        /* Main Page Container */\n");
-                writer.write("        .main-wrapper { display: flex; justify-content: center; padding: 40px 20px; }\n");
-                writer.write("        .container { background: #ffffff; width: 100%; max-width: 800px; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border-top: 5px solid #00bcd4; }\n");
-                writer.write("        \n");
-                writer.write("        /* Typography */\n");
-                writer.write("        h1 { color: #1a1a1a; font-size: 2.2rem; margin-bottom: 20px; font-weight: 700; border-bottom: 1px solid #eaeaea; padding-bottom: 15px; }\n");
-                writer.write("        p { color: #555555; font-size: 1.1rem; line-height: 1.8; }\n");
-                writer.write("        footer {text-align: center; padding: 20px; color: #888888; font-size: 0.9; margin-top: 20px; border-top: 1px solid #eaeaea; }\n");
-                writer.write("    </style>\n</head>\n<body>\n");
-
-                // Generate Navigation Bar dynamically
-                writer.write("    <nav>\n");
-                writer.write("        <div class=\"nav-container\">\n");
-                for (String p : pageNames) {
-                    // Check if current page is the active page to apply styles
-                    String activeClass = p.equals(pageName) ? " class=\"active\"" : "";
-                    writer.write("            <a href=\"" + p + ".html\"" + activeClass + ">" + p + "</a>\n");
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                // Line 1: Date (e.g., 2026-07-14)
+                String date = reader.readLine();
+                
+                // Line 2: Title
+                String title = reader.readLine();
+                
+                // The rest: Body content
+                StringBuilder contentBuilder = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    contentBuilder.append(line).append("\n");
                 }
-                writer.write("        </div>\n");
-                writer.write("    </nav>\n");
+                String content = contentBuilder.toString();
 
-                // Page Content wrapped in a beautiful card
-                writer.write("    <div class=\"main-wrapper\">\n");
-                writer.write("        <div class=\"container\">\n");
-                writer.write("            <h1>" + title + "</h1>\n");
-                writer.write("            <p>" + content + "</p>\n");
-                writer.write("        </div>\n");
-                writer.write("    </div>\n");
-
-                //Footer
-                writer.write("    <footer>\n");
-                writer.write("         &#169; 2026 GitCMS. Generated automatically using Java.\n");
-                writer.write("     <footer>\n");
-
-                writer.write("</body>\n</html>");
-
-                System.out.println("Successfully generated beautifully styled: " + outputFile.getName());
+                // Store this post in our list
+                posts.add(new BlogPost(title, date, pageName, content));
 
             } catch (IOException e) {
-                System.out.println("Error processing file: " + file.getName());
-                e.printStackTrace();
+                System.out.println("Error reading file: " + file.getName());
             }
+        }
+
+        // Sort posts automatically by date (newest first)
+        Collections.sort(posts);
+
+        // 3. Generate structured HTML files for each parsed post
+        for (BlogPost post : posts) {
+            File outputFile = new File(outputDir, post.filename + ".html");
+
+            try (FileWriter writer = new FileWriter(outputFile)) {
+                // Start HTML Document
+                writer.write("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
+                writer.write("    <meta charset=\"UTF-8\">\n");
+                writer.write("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
+                writer.write("    <title>" + post.title + "</title>\n");
+                writer.write("    <link rel='stylesheet' href='style.css'>\n");
+                writer.write("</head>\n<body>\n");
+
+                // Generate Dynamic Navigation Header
+                writer.write("<nav>\n");
+                writer.write("    <div class='nav-container'>\n");
+                for (String page : pageNames) {
+                    String activeClass = page.equals(post.filename) ? "class='active'" : "";
+                    writer.write("        <a href='" + page + ".html' " + activeClass + ">" + page.toUpperCase() + "</a>\n");
+                }
+                writer.write("    </div>\n");
+                writer.write("</nav>\n<hr>\n");
+
+                // Main Content Area
+                writer.write("<main class='container'>\n");
+                writer.write("    <h1>" + post.title + "</h1>\n");
+                writer.write("    <p style='color: gray; font-style: italic;'>Published on: " + post.date + "</p>\n");
+                writer.write("    <article class='main-wrapper'>" + post.content.replace("\n", "<br>") + "</article>\n");
+
+                // If this is the homepage (index.html), embed the feed list!
+                if (post.filename.equals("index")) {
+                    writer.write("    <hr>\n    <h2>Recent Posts Feed</h2>\n");
+                    writer.write("    <ul class='blog-feed' style='list-style-type: none; padding: 0;'>\n");
+                    for (BlogPost p : posts) {
+                        // Keep the homepage out of its own content links list
+                        if (!p.filename.equals("index")) {
+                            writer.write("        <li style='margin-bottom: 10px;'>\n");
+                            writer.write("            <span style='color: gray; margin-right: 15px; font-family: monospace;'>" + p.date + "</span>\n");
+                            writer.write("            <a href='" + p.filename + ".html'><strong>" + p.title + "</strong></a>\n");
+                            writer.write("        </li>\n");
+                        }
+                    }
+                    writer.write("    </ul>\n");
+                }
+
+                writer.write("</main>\n");
+
+                // Footer Section
+                writer.write("<hr>\n<footer>\n");
+                writer.write("    <p>&copy; 2026 GitCMS. Generated Dynamically with Java.</p>\n");
+                writer.write("</footer>\n");
+                
+                // Close HTML Document
+                writer.write("</body>\n</html>");
+                
+                System.out.println("Generated: " + outputFile.getName());
+
+            } catch (IOException e) {
+                System.out.println("Error writing file: " + outputFile.getName());
+            }
+        }
+    }
+
+    // Helper class to store and sort blog posts
+    static class BlogPost implements Comparable<BlogPost> {
+        String title;
+        String date; // Format: YYYY-MM-DD
+        String filename;
+        String content;
+
+        public BlogPost(String title, String date, String filename, String content) {
+            this.title = title;
+            this.date = date;
+            this.filename = filename;
+            this.content = content;
+        }
+
+        // Compares dates to sort newest posts first
+        @Override
+        public int compareTo(BlogPost other) {
+            return other.date.compareTo(this.date); 
         }
     }
 }
