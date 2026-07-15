@@ -54,56 +54,60 @@ public class Parser {
         // Sort posts automatically by date (newest first)
         Collections.sort(posts);
 
-        // 3. Generate structured HTML files for each parsed post
+        // 3. Generate structured HTML files for each parsed post with PREMIUM STYLING
         for (BlogPost post : posts) {
             File outputFile = new File(outputDir, post.filename + ".html");
 
             try (FileWriter writer = new FileWriter(outputFile)) {
-                // Start HTML Document
+                // Start HTML Document with custom stylesheet
                 writer.write("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
                 writer.write("    <meta charset=\"UTF-8\">\n");
                 writer.write("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
                 writer.write("    <title>" + post.title + "</title>\n");
-                writer.write("    <link rel='stylesheet' href='style.css'>\n");
+                writer.write("    <link rel=\"stylesheet\" href=\"style.css\">\n");
                 writer.write("</head>\n<body>\n");
 
-                // Generate Dynamic Navigation Header
+                // Premium Navigation Bar
                 writer.write("<nav>\n");
-                writer.write("    <div class='nav-container'>\n");
+                writer.write("    <div class=\"nav-container\">\n");
                 for (String page : pageNames) {
-                    String activeClass = page.equals(post.filename) ? "class='active'" : "";
-                    writer.write("        <a href='" + page + ".html' " + activeClass + ">" + page.toUpperCase() + "</a>\n");
+                    String activeClass = page.equals(post.filename) ? "class=\"active\"" : "";
+                    writer.write("        <a href=\"" + page + ".html\" " + activeClass + ">" + page.toUpperCase() + "</a>\n");
                 }
                 writer.write("    </div>\n");
-                writer.write("</nav>\n<hr>\n");
+                writer.write("</nav>\n");
 
-                // Main Content Area
-                writer.write("<main class='container'>\n");
-                writer.write("    <h1>" + post.title + "</h1>\n");
-                writer.write("    <p style='color: gray; font-style: italic;'>Published on: " + post.date + "</p>\n");
-                writer.write("    <article class='main-wrapper'>" + post.content.replace("\n", "<br>") + "</article>\n");
+                // Premium Main Wrapper and Card Container
+                writer.write("<div class=\"main-wrapper\">\n");
+                writer.write("    <main class=\"container\">\n");
+                writer.write("        <h1>" + post.title + "</h1>\n");
+                writer.write("        <p class=\"publish-date\" style=\"color: #888888; font-style: italic; margin-top: -10px; margin-bottom: 20px;\">Published on: " + post.date + "</p>\n");
+                writer.write("        <hr style=\"border: 0; border-top: 1px solid #eeeeee; margin-bottom: 20px;\">\n");
+                writer.write("        <article>" + post.content.replace("\n", "<br>") + "</article>\n");
 
-                // If this is the homepage (index.html), embed the feed list!
+                // If this is the homepage (index.html), embed the premium feed card!
                 if (post.filename.equals("index")) {
-                    writer.write("    <hr>\n    <h2>Recent Posts Feed</h2>\n");
-                    writer.write("    <ul class='blog-feed' style='list-style-type: none; padding: 0;'>\n");
+                    writer.write("        <hr style=\"border: 0; border-top: 1px solid #eeeeee; margin-top: 40px; margin-bottom: 30px;\">\n");
+                    writer.write("        <h2>Recent Posts Feed</h2>\n");
+                    writer.write("        <ul class=\"blog-feed\" style=\"list-style-type: none; padding: 0; margin-top: 20px;\">\n");
                     for (BlogPost p : posts) {
-                        // Keep the homepage out of its own content links list
+                        // Keep the homepage out of its own feed list
                         if (!p.filename.equals("index")) {
-                            writer.write("        <li style='margin-bottom: 10px;'>\n");
-                            writer.write("            <span style='color: gray; margin-right: 15px; font-family: monospace;'>" + p.date + "</span>\n");
-                            writer.write("            <a href='" + p.filename + ".html'><strong>" + p.title + "</strong></a>\n");
-                            writer.write("        </li>\n");
+                            writer.write("            <li style=\"padding: 12px 0; border-bottom: 1px dashed #dddddd; display: flex; align-items: center;\">\n");
+                            writer.write("                <span class=\"feed-date\" style=\"color: #888888; margin-right: 20px; font-family: monospace; font-size: 0.95rem;\">" + p.date + "</span>\n");
+                            writer.write("                <a href=\"" + p.filename + ".html\" style=\"font-weight: 600; text-decoration: none; color: #1a1a1a;\">" + p.title + "</a>\n");
+                            writer.write("            </li>\n");
                         }
                     }
-                    writer.write("    </ul>\n");
+                    writer.write("        </ul>\n");
                 }
 
-                writer.write("</main>\n");
+                writer.write("    </main>\n");
+                writer.write("</div>\n"); // End of .main-wrapper
 
-                // Footer Section
-                writer.write("<hr>\n<footer>\n");
-                writer.write("    <p>&copy; 2026 GitCMS. Generated Dynamically with Java.</p>\n");
+                // Premium Footer Section
+                writer.write("<footer>\n");
+                writer.write("    <p>&copy; 2026 GitCMS. Generated automatically using Java.</p>\n");
                 writer.write("</footer>\n");
                 
                 // Close HTML Document
