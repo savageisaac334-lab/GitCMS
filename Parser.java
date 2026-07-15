@@ -5,7 +5,7 @@ public class Parser {
     public static void main(String[] args) {
         // Define paths for input and output folders
         File contentDir = new File("Content");
-        File outputDir = new File("Output");
+        File outputDir = new File(".");// Thi writes directly to your mainfolder!
 
         // Create Output directory if it doesn't exist
         if (!outputDir.exists()) {

@@ -2,47 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Contact Me</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; color: #333; line-height: 1.6; padding-bottom: 60px; }
-        
-        /* Navigation Bar Styling */
-        nav { background: #1a1a1a; padding: 0 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); display: flex; justify-content: center; position: sticky; top: 0; z-index: 100; }
-        .nav-container { display: flex; width: 100%; max-width: 800px; justify-content: flex-start; align-items: center; height: 60px; }
-        nav a { color: #cccccc; margin-right: 30px; text-decoration: none; font-weight: 600; font-size: 1rem; text-transform: capitalize; transition: color 0.3s ease, border-bottom 0.3s ease; padding: 18px 0; border-bottom: 3px solid transparent; }
-        nav a:hover { color: #ffffff; border-bottom: 3px solid #00bcd4; }
-        
-        /* Active link indicator simple match */
-        nav a.active { color: #ffffff; border-bottom: 3px solid #00bcd4; }
-        
-        /* Main Page Container */
-        .main-wrapper { display: flex; justify-content: center; padding: 40px 20px; }
-        .container { background: #ffffff; width: 100%; max-width: 800px; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border-top: 5px solid #00bcd4; }
-        
-        /* Typography */
-        h1 { color: #1a1a1a; font-size: 2.2rem; margin-bottom: 20px; font-weight: 700; border-bottom: 1px solid #eaeaea; padding-bottom: 15px; }
-        p { color: #555555; font-size: 1.1rem; line-height: 1.8; }
-        footer {text-align: center; padding: 20px; color: #888888; font-size: 0.9; margin-top: 20px; border-top: 1px solid #eaeaea; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <nav>
-        <div class="nav-container">
-            <a href="about.html">about</a>
-            <a href="contact.html" class="active">contact</a>
-            <a href="index.html">index</a>
-        </div>
-    </nav>
-    <div class="main-wrapper">
-        <div class="container">
-            <h1>Contact Me</h1>
-            <p>You can reach me directly via email or check out my live projects on my GitHub profile.</p>
-        </div>
+<nav>
+    <div class="nav-container">
+        <a href="about.html" >ABOUT</a>
+        <a href="contact.html" class="active">CONTACT</a>
+        <a href="index.html" >INDEX</a>
     </div>
-    <footer>
-         &#169; 2026 GitCMS. Generated automatically using Java.
-     <footer>
+</nav>
+<div class="main-wrapper">
+    <main class="container">
+        <h1>Contact Me</h1>
+        <p class="publish-date" style="color: #888888; font-style: italic; margin-top: -10px; margin-bottom: 20px;">Published on: 2026-07-14</p>
+        <hr style="border: 0; border-top: 1px solid #eeeeee; margin-bottom: 20px;">
+        <article>Ycls<br>You can reach me directly via email or check out my live projects on my GitHub profile.<br></article>
+    </main>
+</div>
+<footer>
+    <p>&copy; 2026 GitCMS. Generated automatically using Java.</p>
+</footer>
 </body>
 </html>
