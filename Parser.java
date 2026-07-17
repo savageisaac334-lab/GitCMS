@@ -61,14 +61,14 @@ public class Parser {
             // 4. Generate standard Core Pages (About, Contact, & Online Projects)
             generateCorePage("about", "About Me", "2026-07-14", "Murungi Isaac");
             generateCorePage("contact", "Contact Me", "2026-07-14", "Murungi Isaac");
-            generateCorePage("online-projects", "Online Projects", "2026-07-17", "Murungi Isaac");
+            generateCorePage("online-projects", "Online Projects", "2026-07-17", "MurungiIsaac");
 
             // 5. Build dynamic index feed links
             StringBuilder feedBuilder = new StringBuilder();
             for (BlogPost post : blogPosts) {
                 feedBuilder.append("<li><span class='date'>")
                            .append(post.date)
-                           .append("</span> - <a href='")
+                           .append("</span> - <a href='./") // Fixed relative link for feed items
                            .append(post.fileName)
                            .append("'>")
                            .append(post.title)
@@ -139,25 +139,27 @@ public class Parser {
         }
     }
 
-    // Central HTML Master Layout Template
+    // Central HTML Master Layout Template (Updated for GitHub Pages Deployment)
     private static String generatePageHtml(String title, String bodyContent, String date, String author, String feedHtml, boolean isPost) {
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html>\n<html lang='en'>\n<head>\n")
             .append("    <meta charset='UTF-8'>\n")
             .append("    <title>").append(title).append("</title>\n")
-            .append("    <link rel='stylesheet' href='style.css'>\n")
+            // UPDATED: Added './' so GitHub Pages finds style.css perfectly
+            .append("    <link rel='stylesheet' href='./style.css'>\n")
             .append("</head>\n<body>\n")
             .append("<nav>\n    <div class='nav-container'>\n")
-            .append("        <a href='about.html'>ABOUT</a>\n")
-            .append("        <a href='online-projects.html'>ONLINE PROJECTS</a>\n")
-            .append("        <a href='contact.html'>CONTACT</a>\n")
-            .append("        <a href='index.html'>INDEX</a>\n")
+            // UPDATED: Added explicitly explicit relative pathways for robust navigation layout
+            .append("        <a href='./about.html'>ABOUT</a>\n")
+            .append("        <a href='./online-projects.html'>ONLINE PROJECTS</a>\n")
+            .append("        <a href='./contact.html'>CONTACT</a>\n")
+            .append("        <a href='./index.html'>INDEX</a>\n")
             .append("    </div>\n</nav>\n")
             .append("<div class='main-wrapper'>\n")
             .append("    <div class='container'>\n")
             .append("        <h1>").append(title).append("</h1>\n")
             .append("        <p class='publish-date'><em>Published on: ").append(date).append(" | Author: ").append(author).append("</em></p>\n<hr><br>\n")
-           .append("        <article>").append(bodyContent.replace("\n", "<br>\n")).append("</article>\n");
+            .append("        <article>").append(bodyContent.replace("\n", "<br>\n")).append("</article>\n");
 
         if (feedHtml != null && !feedHtml.isEmpty()) {
             html.append("<br><h2>Recent Posts Feed</h2><br>\n")
