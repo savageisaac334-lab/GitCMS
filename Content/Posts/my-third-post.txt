@@ -1,0 +1,9 @@
+---
+title: Expanding My Headless CMS
+date: 2026-07-17
+author: Murungi Isaac
+---
+
+Today I successfully integrated a new 'Online Projects' layout section and configured local Git version control for my CMS engine. 
+
+The Java parser seamlessly compiles my plain text files into clean HTML. Next, I plan to explore building interactive web elements and diving deeper into system administration workflows.
