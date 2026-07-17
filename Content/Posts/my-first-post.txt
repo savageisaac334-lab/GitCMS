@@ -1,0 +1,11 @@
+---
+
+title: My First Epic Tech projects
+date:  2026-07-05
+author: Murungi Isaac
+
+---
+Welcome to my brand new blog! This content is being parsed dynamically from a raw file using my custom CMS engine
+Welcome to my official tech blog! Today I am testing out my 
+custom-built Java engine, which dynamically converts these plain text files into clean HTML codes.
+

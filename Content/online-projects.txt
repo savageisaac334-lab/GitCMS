@@ -1,0 +1,7 @@
+Welcome to my online project showcase! While this CMS runs locally, this page is dedicated to tracking my cloud deployment, web intergration, and online development experiments.
+Here, I plan to document:
+* Web API Intergrations
+* Hosted Web Applications
+* Git Version Control Workflow
+* Server-side and Database Deployments
+Stay tuned as i develop and deploy more projects directly to the web!
