@@ -4,7 +4,6 @@ import java.util.*;
 
 public class Parser {
 
-    // Blueprint for a Blog Post object
     static class BlogPost {
         String title;
         String fileName;
@@ -12,14 +11,18 @@ public class Parser {
         String date;
         String author;
         List<String> tags;
+        int readingTimeMinutes;
+        String excerpt;
 
-        public BlogPost(String title, String fileName, String content, String date, String author, List<String> tags) {
+        public BlogPost(String title, String fileName, String content, String date, String author, List<String> tags, int readingTimeMinutes, String excerpt) {
             this.title = title;
             this.fileName = fileName;
             this.content = content;
             this.date = date;
             this.author = author;
             this.tags = tags;
+            this.readingTimeMinutes = readingTimeMinutes;
+            this.excerpt = excerpt;
         }
     }
 
@@ -45,8 +48,7 @@ public class Parser {
                         String date = metadata.getOrDefault("date", "2026-07-15");
                         String author = metadata.getOrDefault("author", "Unknown");
                         
-                        // Parse comma-separated tags
-                        String rawTags = metadata.getOrDefault("tags", "general");
+                        String rawTags = metadata.containsKey("tags") ? metadata.get("tags") : metadata.getOrDefault("tag", "general");
                         List<String> tags = new ArrayList<>();
                         for (String tag : rawTags.split(",")) {
                             String trimmedTag = tag.trim().toLowerCase();
@@ -56,25 +58,28 @@ public class Parser {
                             }
                         }
 
+                        int wordCount = cleanContent.trim().isEmpty() ? 0 : cleanContent.trim().split("\\s+").length;
+                        int readTime = (int) Math.ceil((double) wordCount / 200.0);
+                        if (readTime < 1) readTime = 1;
+
+                        String excerpt = extractExcerpt(cleanContent);
+
                         String htmlFileName = nameWithoutExtension + ".html";
-                        blogPosts.add(new BlogPost(title, htmlFileName, cleanContent, date, author, tags));
+                        blogPosts.add(new BlogPost(title, htmlFileName, cleanContent, date, author, tags, readTime, excerpt));
                     }
                 }
             }
 
-            // 1. Generate individual blog post HTML pages
             for (BlogPost post : blogPosts) {
-                String htmlContent = generatePageHtml(post.title, post.content, post.date, post.author, "", "", true);
+                String htmlContent = generatePageHtml(post.title, post.content, post.date, post.author, post.readingTimeMinutes, "", "", true);
                 Files.writeString(Paths.get(post.fileName), htmlContent);
                 System.out.println("Generated Blog Post: " + post.fileName);
             }
 
-            // 2. Generate standard Core Pages
             generateCorePage("about", "About Me", "2026-07-14", "Murungi Isaac");
             generateCorePage("contact", "Contact Me", "2026-07-14", "Murungi Isaac");
             generateCorePage("online-projects", "Online Projects", "2026-07-17", "Murungi Isaac");
 
-            // 3. Build dynamic tag buttons HTML
             StringBuilder tagsHtmlBuilder = new StringBuilder("<div class='tag-buttons' style='margin-bottom: 15px;'><strong>Filter by Tag: </strong>");
             tagsHtmlBuilder.append("<button onclick='filterTag(\"all\")' style='margin-right: 5px; padding: 4px 8px; cursor: pointer;'>All</button>");
             for (String tag : allUniqueTags) {
@@ -83,32 +88,26 @@ public class Parser {
             }
             tagsHtmlBuilder.append("</div>\n");
 
-            // 4. Build dynamic index feed links with tag data attributes
             StringBuilder feedBuilder = new StringBuilder();
             for (BlogPost post : blogPosts) {
                 String tagClasses = String.join(" ", post.tags);
-                feedBuilder.append("<li class='post-item' data-tags='").append(tagClasses).append("'><span class='date'>")
-                           .append(post.date)
-                           .append("</span> - <a href='./")
-                           .append(post.fileName)
-                           .append("' class='post-title'>")
-                           .append(post.title)
-                           .append("</a> <span class='author'>by ")
-                           .append(post.author)
-                           .append("</span> <small style='color: #666;'>[")
-                           .append(String.join(", ", post.tags))
-                           .append("]</small></li>\n");
+                feedBuilder.append("<li class='post-item' data-tags='").append(tagClasses).append("' style='margin-bottom: 20px;'>")
+                           .append("<span class='date'>").append(post.date).append("</span> - ")
+                           .append("<a href='./").append(post.fileName).append("' class='post-title' style='font-weight: bold; font-size: 1.1em;'>").append(post.title).append("</a> ")
+                           .append("<span class='author'>by ").append(post.author).append("</span> ")
+                           .append("<small style='color: #888;'>(").append(post.readingTimeMinutes).append(" min read)</small><br>")
+                           .append("<p style='margin: 5px 0; color: #444; font-size: 0.95em;'>").append(post.excerpt).append("</p>")
+                           .append("<small style='color: #666;'>Tags: ").append(String.join(", ", post.tags)).append("</small>")
+                           .append("</li>\n");
             }
 
-            // 5. Generate Index Home Page
             String indexIntro = Files.exists(Paths.get("Content/index.txt")) 
                 ? Files.readString(Paths.get("Content/index.txt")) 
                 : "Welcome to GitCMS!";
-            String indexHtml = generatePageHtml("Welcome to GitCMS", indexIntro, "2026-07-14", "Isaac", feedBuilder.toString(), tagsHtmlBuilder.toString(), false);
+            String indexHtml = generatePageHtml("Welcome to GitCMS", indexIntro, "2026-07-14", "Isaac", 0, feedBuilder.toString(), tagsHtmlBuilder.toString(), false);
             Files.writeString(Paths.get("index.html"), indexHtml);
             System.out.println("Generated Index Page: index.html");
 
-            // 6. Generate RSS Feed XML
             generateRssFeed(blogPosts);
 
         } catch (Exception e) {
@@ -146,11 +145,20 @@ public class Parser {
         return bodyBuilder.toString().trim();
     }
 
+    private static String extractExcerpt(String content) {
+        if (content == null || content.isEmpty()) return "";
+        String cleanText = content.replaceAll("#+", "").replaceAll("\\*+", "").trim();
+        if (cleanText.length() > 140) {
+            return cleanText.substring(0, 140) + "...";
+        }
+        return cleanText;
+    }
+
     private static void generateCorePage(String fileName, String title, String date, String author) throws IOException {
         Path textPath = Paths.get("Content/" + fileName + ".txt");
         if (Files.exists(textPath)) {
             String txtContent = Files.readString(textPath);
-            String htmlOutput = generatePageHtml(title, txtContent, date, author, "", "", false);
+            String htmlOutput = generatePageHtml(title, txtContent, date, author, 0, "", "", false);
             Files.writeString(Paths.get(fileName + ".html"), htmlOutput);
             System.out.println("Generated Core Page: " + fileName + ".html");
         }
@@ -177,12 +185,12 @@ public class Parser {
             text = text.replaceFirst("\\\\", "<strong>").replaceFirst("\\\\", "</strong>");
         }
         while (text.contains("*")) {
-            text = text.replaceFirst("\\", "<em>").replaceFirst("\\", "</em>");
+            text = text.replaceFirst("\\", "em>").replaceFirst("\\", "</em>");
         }
         return text;
     }
 
-    private static String generatePageHtml(String title, String bodyContent, String date, String author, String feedHtml, String tagsHtml, boolean isPost) {
+    private static String generatePageHtml(String title, String bodyContent, String date, String author, int readTime, String feedHtml, String tagsHtml, boolean isPost) {
         String formattedArticle = convertMarkdownToHtml(bodyContent);
 
         StringBuilder html = new StringBuilder();
@@ -201,14 +209,20 @@ public class Parser {
             .append("<div class='main-wrapper'>\n")
             .append("    <div class='container'>\n")
             .append("        <h1>").append(title).append("</h1>\n")
-            .append("        <p class='publish-date'><em>Published on: ").append(date).append(" | Author: ").append(author).append("</em></p>\n<hr><br>\n")
+            .append("        <p class='publish-date'><em>Published on: ").append(date).append(" | Author: ").append(author);
+        
+        if (isPost && readTime > 0) {
+            html.append(" | ").append(readTime).append(" min read");
+        }
+
+        html.append("</em></p>\n<hr><br>\n")
             .append("        <article>").append(formattedArticle).append("</article>\n");
 
         if (feedHtml != null && !feedHtml.isEmpty()) {
             html.append("<br><h2>Recent Posts Feed</h2><br>\n")
                 .append("        <input type='text' id='searchInput' onkeyup='filterPosts()' placeholder='Search posts...' style='width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px;'>\n")
                 .append(tagsHtml)
-                .append("        <ul class='blog-feed' id='postList'>\n").append(feedHtml).append("        </ul>\n")
+                .append("        <ul class='blog-feed' id='postList' style='list-style: none; padding-left: 0;'>\n").append(feedHtml).append("        </ul>\n")
                 .append("<script>\n")
                 .append("let selectedTag = 'all';\n")
                 .append("function filterTag(tag) {\n")
