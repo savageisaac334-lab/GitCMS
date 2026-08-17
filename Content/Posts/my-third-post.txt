@@ -2,7 +2,7 @@
 title: Expanding My Headless CMS
 date: 2026-07-17
 author: Murungi Isaac
-tags: haedless, web, java
+tags: headless, web, java
 ---
 
 Today I successfully integrated a new 'Online Projects' layout section and configured local Git version control for my CMS engine. 
