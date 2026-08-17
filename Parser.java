@@ -1,289 +1,168 @@
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Parser {
 
-    static class BlogPost {
-        String title;
-        String fileName;
-        String content;
-        String date;
-        String author;
-        List<String> tags;
-        int readingTimeMinutes;
-        String excerpt;
+    public static class BlogPost {
+        private String title;
+        private String date;
+        private String author;
+        private String content;
+        private String fileName;
+        private String excerpt;
+        private int readingTimeMinutes;
+        private List<String> tags = new ArrayList<>();
 
-        public BlogPost(String title, String fileName, String content, String date, String author, List<String> tags, int readingTimeMinutes, String excerpt) {
-            this.title = title;
-            this.fileName = fileName;
-            this.content = content;
-            this.date = date;
-            this.author = author;
-            this.tags = tags;
-            this.readingTimeMinutes = readingTimeMinutes;
-            this.excerpt = excerpt;
-        }
+        // Getters and Setters
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+
+        public String getDate() { return date; }
+        public void setDate(String date) { this.date = date; }
+
+        public String getAuthor() { return author; }
+        public void setAuthor(String author) { this.author = author; }
+
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+
+        public String getFileName() { return fileName; }
+        public void setFileName(String fileName) { this.fileName = fileName; }
+
+        public String getExcerpt() { return excerpt; }
+        public void setExcerpt(String excerpt) { this.excerpt = excerpt; }
+
+        public int getReadingTimeMinutes() { return readingTimeMinutes; }
+        public void setReadingTimeMinutes(int readingTimeMinutes) { this.readingTimeMinutes = readingTimeMinutes; }
+
+        public List<String> getTags() { return tags; }
+        public void setTags(List<String> tags) { this.tags = tags; }
     }
 
-    private static final String SITE_URL = "https://savageisaac334-lab.github.io/GitCMS";
+    public static BlogPost parsePost(File file) throws IOException {
+        BlogPost post = new BlogPost();
+        post.setFileName(file.getName().replace(".txt", ".html"));
 
-    public static void main(String[] args) {
-        try {
-            File postsFolder = new File("Content/Posts");
-            List<BlogPost> blogPosts = new ArrayList<>();
-            Set<String> allUniqueTags = new TreeSet<>();
+        List<String> lines = Files.readAllLines(file.toPath());
+        boolean insideFrontMatter = false;
+        StringBuilder contentBuilder = new StringBuilder();
 
-            if (postsFolder.exists() && postsFolder.isDirectory()) {
-                File[] postFiles = postsFolder.listFiles((dir, name) -> name.endsWith(".txt") || name.endsWith(".md"));
-                if (postFiles != null) {
-                    for (File file : postFiles) {
-                        String nameWithoutExtension = file.getName().replace(".txt", "").replace(".md", "");
-                        String rawContent = Files.readString(file.toPath());
-                        
-                        Map<String, String> metadata = new HashMap<>();
-                        String cleanContent = parseFrontMatter(rawContent, metadata);
+        for (String line : lines) {
+            if (line.trim().equals("---")) {
+                insideFrontMatter = !insideFrontMatter;
+                continue;
+            }
 
-                        String title = metadata.getOrDefault("title", capitalizeTitle(nameWithoutExtension.replace("-", " ")));
-                        String date = metadata.getOrDefault("date", "2026-07-15");
-                        String author = metadata.getOrDefault("author", "Unknown");
-                        
-                        String rawTags = metadata.containsKey("tags") ? metadata.get("tags") : metadata.getOrDefault("tag", "general");
-                        List<String> tags = new ArrayList<>();
-                        for (String tag : rawTags.split(",")) {
-                            String trimmedTag = tag.trim().toLowerCase();
-                            if (!trimmedTag.isEmpty()) {
-                                tags.add(trimmedTag);
-                                allUniqueTags.add(trimmedTag);
-                            }
+            if (insideFrontMatter) {
+                String lower = line.toLowerCase();
+                if (lower.startsWith("title:")) {
+                    post.setTitle(line.substring(line.indexOf(":") + 1).trim());
+                } else if (lower.startsWith("date:")) {
+                    post.setDate(line.substring(line.indexOf(":") + 1).trim());
+                } else if (lower.startsWith("author:")) {
+                    post.setAuthor(line.substring(line.indexOf(":") + 1).trim());
+                } else if (lower.startsWith("tag:") || lower.startsWith("tags:")) {
+                    String tagString = line.substring(line.indexOf(":") + 1).trim();
+                    List<String> parsedTags = new ArrayList<>();
+                    for (String t : tagString.split(",")) {
+                        if (!t.trim().isEmpty()) {
+                            parsedTags.add(t.trim());
                         }
-
-                        int wordCount = cleanContent.trim().isEmpty() ? 0 : cleanContent.trim().split("\\s+").length;
-                        int readTime = (int) Math.ceil((double) wordCount / 200.0);
-                        if (readTime < 1) readTime = 1;
-
-                        String excerpt = extractExcerpt(cleanContent);
-
-                        String htmlFileName = nameWithoutExtension + ".html";
-                        blogPosts.add(new BlogPost(title, htmlFileName, cleanContent, date, author, tags, readTime, excerpt));
                     }
+                    post.setTags(parsedTags);
                 }
-            }
-
-            for (BlogPost post : blogPosts) {
-                String htmlContent = generatePageHtml(post.title, post.content, post.date, post.author, post.readingTimeMinutes, "", "", true);
-                Files.writeString(Paths.get(post.fileName), htmlContent);
-                System.out.println("Generated Blog Post: " + post.fileName);
-            }
-
-            generateCorePage("about", "About Me", "2026-07-14", "Murungi Isaac");
-            generateCorePage("contact", "Contact Me", "2026-07-14", "Murungi Isaac");
-            generateCorePage("online-projects", "Online Projects", "2026-07-17", "Murungi Isaac");
-
-            StringBuilder tagsHtmlBuilder = new StringBuilder("<div class='tag-buttons' style='margin-bottom: 15px;'><strong>Filter by Tag: </strong>");
-            tagsHtmlBuilder.append("<button onclick='filterTag(\"all\")' style='margin-right: 5px; padding: 4px 8px; cursor: pointer;'>All</button>");
-            for (String tag : allUniqueTags) {
-                tagsHtmlBuilder.append("<button onclick='filterTag(\"").append(tag).append("\")' style='margin-right: 5px; padding: 4px 8px; cursor: pointer;'>#")
-                               .append(tag).append("</button>");
-            }
-            tagsHtmlBuilder.append("</div>\n");
-
-            StringBuilder feedBuilder = new StringBuilder();
-            for (BlogPost post : blogPosts) {
-                String tagClasses = String.join(" ", post.tags);
-                feedBuilder.append("<li class='post-item' data-tags='").append(tagClasses).append("' style='margin-bottom: 20px;'>")
-                           .append("<span class='date'>").append(post.date).append("</span> - ")
-                           .append("<a href='./").append(post.fileName).append("' class='post-title' style='font-weight: bold; font-size: 1.1em;'>").append(post.title).append("</a> ")
-                           .append("<span class='author'>by ").append(post.author).append("</span> ")
-                           .append("<small style='color: #888;'>(").append(post.readingTimeMinutes).append(" min read)</small><br>")
-                           .append("<p style='margin: 5px 0; color: #444; font-size: 0.95em;'>").append(post.excerpt).append("</p>")
-                           .append("<small style='color: #666;'>Tags: ").append(String.join(", ", post.tags)).append("</small>")
-                           .append("</li>\n");
-            }
-
-            String indexIntro = Files.exists(Paths.get("Content/index.txt")) 
-                ? Files.readString(Paths.get("Content/index.txt")) 
-                : "Welcome to GitCMS!";
-            String indexHtml = generatePageHtml("Welcome to GitCMS", indexIntro, "2026-07-14", "Isaac", 0, feedBuilder.toString(), tagsHtmlBuilder.toString(), false);
-            Files.writeString(Paths.get("index.html"), indexHtml);
-            System.out.println("Generated Index Page: index.html");
-
-            generateRssFeed(blogPosts);
-
-        } catch (Exception e) {
-            System.out.println("Error running engine: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private static String parseFrontMatter(String rawContent, Map<String, String> metadata) {
-        rawContent = rawContent.trim();
-        if (!rawContent.startsWith("---")) return rawContent;
-
-        String[] lines = rawContent.split("\\r?\\n");
-        StringBuilder bodyBuilder = new StringBuilder();
-        boolean insideMetadata = false;
-        int dashCount = 0;
-
-        for (String line : lines) {
-            String trimmedLine = line.trim();
-            if (trimmedLine.equals("---")) {
-                dashCount++;
-                if (dashCount == 1) { insideMetadata = true; continue; }
-                else if (dashCount == 2) { insideMetadata = false; continue; }
-            }
-
-            if (insideMetadata) {
-                String[] parts = trimmedLine.split(":", 2);
-                if (parts.length == 2) {
-                    metadata.put(parts[0].trim().toLowerCase(), parts[1].trim());
-                }
-            } else if (dashCount >= 2) {
-                bodyBuilder.append(line).append("\n");
+            } else {
+                contentBuilder.append(line).append("\n");
             }
         }
-        return bodyBuilder.toString().trim();
+
+        String fullContent = contentBuilder.toString().trim();
+        post.setContent(fullContent);
+
+        // Excerpt calculation
+        String[] words = fullContent.split("\\s+");
+        StringBuilder excerptBuilder = new StringBuilder();
+        int excerptWordCount = Math.min(words.length, 30);
+        for (int i = 0; i < excerptWordCount; i++) {
+            excerptBuilder.append(words[i]).append(" ");
+        }
+        post.setExcerpt(excerptBuilder.toString().trim() + "...");
+
+        // Reading time calculation (average 200 words per minute)
+        int calculatedTime = (int) Math.ceil((double) words.length / 200);
+        post.setReadingTimeMinutes(Math.max(1, calculatedTime));
+
+        return post;
     }
 
-    private static String extractExcerpt(String content) {
-        if (content == null || content.isEmpty()) return "";
-        String cleanText = content.replaceAll("#+", "").replaceAll("\\*+", "").trim();
-        if (cleanText.length() > 140) {
-            return cleanText.substring(0, 140) + "...";
+    public static String generateHtml(BlogPost post) {
+        StringBuilder tagsBuilder = new StringBuilder("<div class=\"tags\">");
+        for (String tag : post.getTags()) {
+            tagsBuilder.append("<span class=\"tag-badge\">#").append(tag).append("</span> ");
         }
-        return cleanText;
+        tagsBuilder.append("</div>");
+
+        return "<!DOCTYPE html>\n" +
+               "<html lang=\"en\">\n" +
+               "<head>\n" +
+               "    <meta charset=\"UTF-8\">\n" +
+               "    <title>" + post.getTitle() + "</title>\n" +
+               "    <link rel=\"stylesheet\" href=\"style.css\">\n" +
+               "</head>\n" +
+               "<body>\n" +
+               "    <article>\n" +
+               "        <h1>" + post.getTitle() + "</h1>\n" +
+               "        <p class=\"meta\">By " + post.getAuthor() + " | " + post.getDate() + " | " + post.getReadingTimeMinutes() + " min read</p>\n" +
+               "        " + tagsBuilder.toString() + "\n" +
+               "        <div class=\"content\">\n" +
+               "            <p>" + post.getContent().replace("\n", "</p><p>") + "</p>\n" +
+               "        </div>\n" +
+               "    </article>\n" +
+               "</body>\n" +
+               "</html>";
     }
 
-    private static void generateCorePage(String fileName, String title, String date, String author) throws IOException {
-        Path textPath = Paths.get("Content/" + fileName + ".txt");
-        if (Files.exists(textPath)) {
-            String txtContent = Files.readString(textPath);
-            String htmlOutput = generatePageHtml(title, txtContent, date, author, 0, "", "", false);
-            Files.writeString(Paths.get(fileName + ".html"), htmlOutput);
-            System.out.println("Generated Core Page: " + fileName + ".html");
-        }
-    }
-
-    private static String convertMarkdownToHtml(String text) {
-        if (text == null || text.isEmpty()) return "";
-        StringBuilder parsed = new StringBuilder();
-        String[] lines = text.split("\\r?\\n");
-
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (trimmed.startsWith("### ")) parsed.append("<h3>").append(trimmed.substring(4)).append("</h3>\n");
-            else if (trimmed.startsWith("## ")) parsed.append("<h2>").append(trimmed.substring(3)).append("</h2>\n");
-            else if (trimmed.startsWith("# ")) parsed.append("<h1>").append(trimmed.substring(2)).append("</h1>\n");
-            else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) parsed.append("<li>").append(trimmed.substring(2)).append("</li>\n");
-            else parsed.append(line).append("<br>\n");
-        }
-        return parseInlineStyles(parsed.toString());
-    }
-
-    private static String parseInlineStyles(String text) {
-        while (text.contains("**")) {
-            text = text.replaceFirst("\\\\", "<strong>").replaceFirst("\\\\", "</strong>");
-        }
-        while (text.contains("*")) {
-            text = text.replaceFirst("\\", "em>").replaceFirst("\\", "</em>");
-        }
-        return text;
-    }
-
-    private static String generatePageHtml(String title, String bodyContent, String date, String author, int readTime, String feedHtml, String tagsHtml, boolean isPost) {
-        String formattedArticle = convertMarkdownToHtml(bodyContent);
-
-        StringBuilder html = new StringBuilder();
-        html.append("<!DOCTYPE html>\n<html lang='en'>\n<head>\n")
-            .append("    <meta charset='UTF-8'>\n")
-            .append("    <title>").append(title).append("</title>\n")
-            .append("    <link rel='stylesheet' href='./style.css'>\n")
-            .append("    <link rel='alternate' type='application/rss+xml' title='GitCMS RSS Feed' href='./rss.xml'>\n")
-            .append("</head>\n<body>\n")
-            .append("<nav>\n    <div class='nav-container'>\n")
-            .append("        <a href='./about.html'>ABOUT</a>\n")
-            .append("        <a href='./online-projects.html'>ONLINE PROJECTS</a>\n")
-            .append("        <a href='./contact.html'>CONTACT</a>\n")
-            .append("        <a href='./index.html'>INDEX</a>\n")
-            .append("    </div>\n</nav>\n")
-            .append("<div class='main-wrapper'>\n")
-            .append("    <div class='container'>\n")
-            .append("        <h1>").append(title).append("</h1>\n")
-            .append("        <p class='publish-date'><em>Published on: ").append(date).append(" | Author: ").append(author);
-        
-        if (isPost && readTime > 0) {
-            html.append(" | ").append(readTime).append(" min read");
-        }
-
-        html.append("</em></p>\n<hr><br>\n")
-            .append("        <article>").append(formattedArticle).append("</article>\n");
-
-        if (feedHtml != null && !feedHtml.isEmpty()) {
-            html.append("<br><h2>Recent Posts Feed</h2><br>\n")
-                .append("        <input type='text' id='searchInput' onkeyup='filterPosts()' placeholder='Search posts...' style='width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px;'>\n")
-                .append(tagsHtml)
-                .append("        <ul class='blog-feed' id='postList' style='list-style: none; padding-left: 0;'>\n").append(feedHtml).append("        </ul>\n")
-                .append("<script>\n")
-                .append("let selectedTag = 'all';\n")
-                .append("function filterTag(tag) {\n")
-                .append("  selectedTag = tag;\n")
-                .append("  filterPosts();\n")
-                .append("}\n")
-                .append("function filterPosts() {\n")
-                .append("  let input = document.getElementById('searchInput').value.toLowerCase();\n")
-                .append("  let posts = document.getElementsByClassName('post-item');\n")
-                .append("  for (let i = 0; i < posts.length; i++) {\n")
-                .append("    let text = posts[i].innerText.toLowerCase();\n")
-                .append("    let tags = posts[i].getAttribute('data-tags').split(' ');\n")
-                .append("    let matchesSearch = text.includes(input);\n")
-                .append("    let matchesTag = (selectedTag === 'all') || tags.includes(selectedTag);\n")
-                .append("    posts[i].style.display = (matchesSearch && matchesTag) ? '' : 'none';\n")
-                .append("  }\n")
-                .append("}\n")
-                .append("</script>\n");
-        }
-
-        html.append("    </div>\n")
-            .append("    <footer>&copy; 2026 GitCMS. Generated automatically using Java. | <a href='./rss.xml'>RSS Feed</a></footer>\n")
-            .append("</div>\n</body>\n</html>");
-        return html.toString();
-    }
-
-    private static void generateRssFeed(List<BlogPost> posts) throws IOException {
+    public static void generateRssFeed(List<BlogPost> posts) throws IOException {
         StringBuilder rss = new StringBuilder();
-        rss.append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n")
-           .append("<rss version=\"2.0\">\n")
-           .append("<channel>\n")
-           .append("  <title>GitCMS Blog Feed</title>\n")
-           .append("  <link>").append(SITE_URL).append("/index.html</link>\n")
-           .append("  <description>Automated blog feed generated by Java GitCMS engine.</description>\n")
-           .append("  <language>en-us</language>\n");
+        rss.append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
+        rss.append("<rss version=\"2.0\">\n");
+        rss.append("<channel>\n");
+        rss.append("  <title>GitCMS Blog</title>\n");
+        rss.append("  <link>https://github.com/savageisaac334-lab/GitCMS</link>\n");
+        rss.append("  <description>Latest blog posts</description>\n");
 
         for (BlogPost post : posts) {
-            rss.append("  <item>\n")
-               .append("    <title>").append(post.title).append("</title>\n")
-               .append("    <link>").append(SITE_URL).append("/").append(post.fileName).append("</link>\n")
-               .append("    <description><![CDATA[").append(post.content).append("]]></description>\n")
-               .append("    <author>").append(post.author).append("</author>\n")
-               .append("    <pubDate>").append(post.date).append("</pubDate>\n")
-               .append("  </item>\n");
+            rss.append("  <item>\n");
+            rss.append("    <title>").append(post.getTitle()).append("</title>\n");
+            rss.append("    <description>").append(post.getExcerpt()).append("</description>\n");
+            rss.append("  </item>\n");
         }
 
-        rss.append("</channel>\n</rss>");
+        rss.append("</channel>\n");
+        rss.append("</rss>");
+
         Files.writeString(Paths.get("rss.xml"), rss.toString());
         System.out.println("Generated RSS Feed: rss.xml");
     }
 
     private static String capitalizeTitle(String str) {
-        String[] words = str.split("\\s");
+        String[] words = str.split("\\s+");
         StringBuilder capitalizeWord = new StringBuilder();
         for (String w : words) {
             if (w.length() > 0) {
-                String first = w.substring(0, 1);
-                String afterfirst = w.substring(1);
-                capitalizeWord.append(first.toUpperCase()).append(afterfirst).append(" ");
+                capitalizeWord.append(Character.toUpperCase(w.charAt(0)))
+                              .append(w.substring(1))
+                              .append(" ");
             }
         }
         return capitalizeWord.toString().trim();
+    }
+
+    public static void main(String[] args) {
+        System.out.println("Parser ready.");
     }
 }
