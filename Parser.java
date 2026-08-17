@@ -175,8 +175,8 @@ public class Parser {
         result = result.replaceAll("\\\\(.?)\\\\*", "<strong>$1</strong>");
         // Italic formatting: italic text
         result = result.replaceAll("\\(.?)\\*", "<em>$1</em>");
-        // Link formatting: [Text](url)
-        result = result.replaceAll("\\[(.?)\\]\\((.?)\\)", "<a href='$2'>$1</a>");
+        // Link formatting: FIXED REGEX ESCAPING FOR [Text](url)
+        result = result.replaceAll("\\[([^\\]]+)\\]\\(([^\\)]+)\\)", "<a href='$2'>$1</a>");
 
         return result;
     }
