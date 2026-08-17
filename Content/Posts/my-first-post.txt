@@ -3,6 +3,7 @@
 title: My First Epic Tech projects
 date:  2026-07-05
 author: Murungi Isaac
+tag: tech, java, projects
 
 ---
 Welcome to my brand new blog! This content is being parsed dynamically from a raw file using my custom CMS engine

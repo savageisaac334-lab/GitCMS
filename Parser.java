@@ -11,27 +11,26 @@ public class Parser {
         String content;
         String date;
         String author;
+        List<String> tags;
 
-        public BlogPost(String title, String fileName, String content, String date, String author) {
+        public BlogPost(String title, String fileName, String content, String date, String author, List<String> tags) {
             this.title = title;
             this.fileName = fileName;
             this.content = content;
             this.date = date;
             this.author = author;
+            this.tags = tags;
         }
     }
 
-    // Your site's deployed domain URL for RSS links
     private static final String SITE_URL = "https://savageisaac334-lab.github.io/GitCMS";
 
     public static void main(String[] args) {
         try {
-            // 1. Setup paths
-            File contentFolder = new File("Content");
             File postsFolder = new File("Content/Posts");
             List<BlogPost> blogPosts = new ArrayList<>();
+            Set<String> allUniqueTags = new TreeSet<>();
 
-            // 2. Scan the "Content/Posts" folder for blog articles (.txt or .md)
             if (postsFolder.exists() && postsFolder.isDirectory()) {
                 File[] postFiles = postsFolder.listFiles((dir, name) -> name.endsWith(".txt") || name.endsWith(".md"));
                 if (postFiles != null) {
@@ -39,37 +38,56 @@ public class Parser {
                         String nameWithoutExtension = file.getName().replace(".txt", "").replace(".md", "");
                         String rawContent = Files.readString(file.toPath());
                         
-                        // Parse Front Matter Metadata
                         Map<String, String> metadata = new HashMap<>();
                         String cleanContent = parseFrontMatter(rawContent, metadata);
 
-                        // Fallback values if metadata keys are missing in the file
                         String title = metadata.getOrDefault("title", capitalizeTitle(nameWithoutExtension.replace("-", " ")));
                         String date = metadata.getOrDefault("date", "2026-07-15");
                         String author = metadata.getOrDefault("author", "Unknown");
+                        
+                        // Parse comma-separated tags
+                        String rawTags = metadata.getOrDefault("tags", "general");
+                        List<String> tags = new ArrayList<>();
+                        for (String tag : rawTags.split(",")) {
+                            String trimmedTag = tag.trim().toLowerCase();
+                            if (!trimmedTag.isEmpty()) {
+                                tags.add(trimmedTag);
+                                allUniqueTags.add(trimmedTag);
+                            }
+                        }
 
                         String htmlFileName = nameWithoutExtension + ".html";
-                        blogPosts.add(new BlogPost(title, htmlFileName, cleanContent, date, author));
+                        blogPosts.add(new BlogPost(title, htmlFileName, cleanContent, date, author, tags));
                     }
                 }
             }
 
-            // 3. Generate individual blog post HTML pages
+            // 1. Generate individual blog post HTML pages
             for (BlogPost post : blogPosts) {
-                String htmlContent = generatePageHtml(post.title, post.content, post.date, post.author, "", true);
+                String htmlContent = generatePageHtml(post.title, post.content, post.date, post.author, "", "", true);
                 Files.writeString(Paths.get(post.fileName), htmlContent);
                 System.out.println("Generated Blog Post: " + post.fileName);
             }
 
-            // 4. Generate standard Core Pages (About, Contact, & Online Projects)
+            // 2. Generate standard Core Pages
             generateCorePage("about", "About Me", "2026-07-14", "Murungi Isaac");
             generateCorePage("contact", "Contact Me", "2026-07-14", "Murungi Isaac");
             generateCorePage("online-projects", "Online Projects", "2026-07-17", "Murungi Isaac");
 
-            // 5. Build dynamic index feed links with searchable attributes
+            // 3. Build dynamic tag buttons HTML
+            StringBuilder tagsHtmlBuilder = new StringBuilder("<div class='tag-buttons' style='margin-bottom: 15px;'><strong>Filter by Tag: </strong>");
+            tagsHtmlBuilder.append("<button onclick='filterTag(\"all\")' style='margin-right: 5px; padding: 4px 8px; cursor: pointer;'>All</button>");
+            for (String tag : allUniqueTags) {
+                tagsHtmlBuilder.append("<button onclick='filterTag(\"").append(tag).append("\")' style='margin-right: 5px; padding: 4px 8px; cursor: pointer;'>#")
+                               .append(tag).append("</button>");
+            }
+            tagsHtmlBuilder.append("</div>\n");
+
+            // 4. Build dynamic index feed links with tag data attributes
             StringBuilder feedBuilder = new StringBuilder();
             for (BlogPost post : blogPosts) {
-                feedBuilder.append("<li class='post-item'><span class='date'>")
+                String tagClasses = String.join(" ", post.tags);
+                feedBuilder.append("<li class='post-item' data-tags='").append(tagClasses).append("'><span class='date'>")
                            .append(post.date)
                            .append("</span> - <a href='./")
                            .append(post.fileName)
@@ -77,18 +95,20 @@ public class Parser {
                            .append(post.title)
                            .append("</a> <span class='author'>by ")
                            .append(post.author)
-                           .append("</span></li>\n");
+                           .append("</span> <small style='color: #666;'>[")
+                           .append(String.join(", ", post.tags))
+                           .append("]</small></li>\n");
             }
 
-            // 6. Generate the main Index Home Page with Search Bar embedded
+            // 5. Generate Index Home Page
             String indexIntro = Files.exists(Paths.get("Content/index.txt")) 
                 ? Files.readString(Paths.get("Content/index.txt")) 
                 : "Welcome to GitCMS!";
-            String indexHtml = generatePageHtml("Welcome to GitCMS", indexIntro, "2026-07-14", "Isaac", feedBuilder.toString(), false);
+            String indexHtml = generatePageHtml("Welcome to GitCMS", indexIntro, "2026-07-14", "Isaac", feedBuilder.toString(), tagsHtmlBuilder.toString(), false);
             Files.writeString(Paths.get("index.html"), indexHtml);
             System.out.println("Generated Index Page: index.html");
 
-            // 7. Generate RSS Feed XML
+            // 6. Generate RSS Feed XML
             generateRssFeed(blogPosts);
 
         } catch (Exception e) {
@@ -97,13 +117,9 @@ public class Parser {
         }
     }
 
-    // Front Matter Parsing Engine
     private static String parseFrontMatter(String rawContent, Map<String, String> metadata) {
         rawContent = rawContent.trim();
-        
-        if (!rawContent.startsWith("---")) {
-            return rawContent;
-        }
+        if (!rawContent.startsWith("---")) return rawContent;
 
         String[] lines = rawContent.split("\\r?\\n");
         StringBuilder bodyBuilder = new StringBuilder();
@@ -112,16 +128,10 @@ public class Parser {
 
         for (String line : lines) {
             String trimmedLine = line.trim();
-            
             if (trimmedLine.equals("---")) {
                 dashCount++;
-                if (dashCount == 1) {
-                    insideMetadata = true;
-                    continue;
-                } else if (dashCount == 2) {
-                    insideMetadata = false;
-                    continue;
-                }
+                if (dashCount == 1) { insideMetadata = true; continue; }
+                else if (dashCount == 2) { insideMetadata = false; continue; }
             }
 
             if (insideMetadata) {
@@ -136,42 +146,30 @@ public class Parser {
         return bodyBuilder.toString().trim();
     }
 
-    // Helper to generate a core text layout page
     private static void generateCorePage(String fileName, String title, String date, String author) throws IOException {
         Path textPath = Paths.get("Content/" + fileName + ".txt");
         if (Files.exists(textPath)) {
             String txtContent = Files.readString(textPath);
-            String htmlOutput = generatePageHtml(title, txtContent, date, author, "", false);
+            String htmlOutput = generatePageHtml(title, txtContent, date, author, "", "", false);
             Files.writeString(Paths.get(fileName + ".html"), htmlOutput);
             System.out.println("Generated Core Page: " + fileName + ".html");
         }
     }
 
-    // Custom Markdown-to-HTML engine logic
     private static String convertMarkdownToHtml(String text) {
         if (text == null || text.isEmpty()) return "";
-
         StringBuilder parsed = new StringBuilder();
         String[] lines = text.split("\\r?\\n");
 
         for (String line : lines) {
             String trimmed = line.trim();
-
-            if (trimmed.startsWith("### ")) {
-                parsed.append("<h3>").append(trimmed.substring(4)).append("</h3>\n");
-            } else if (trimmed.startsWith("## ")) {
-                parsed.append("<h2>").append(trimmed.substring(3)).append("</h2>\n");
-            } else if (trimmed.startsWith("# ")) {
-                parsed.append("<h1>").append(trimmed.substring(2)).append("</h1>\n");
-            } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-                parsed.append("<li>").append(trimmed.substring(2)).append("</li>\n");
-            } else {
-                parsed.append(line).append("<br>\n");
-            }
+            if (trimmed.startsWith("### ")) parsed.append("<h3>").append(trimmed.substring(4)).append("</h3>\n");
+            else if (trimmed.startsWith("## ")) parsed.append("<h2>").append(trimmed.substring(3)).append("</h2>\n");
+            else if (trimmed.startsWith("# ")) parsed.append("<h1>").append(trimmed.substring(2)).append("</h1>\n");
+            else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) parsed.append("<li>").append(trimmed.substring(2)).append("</li>\n");
+            else parsed.append(line).append("<br>\n");
         }
-
-        String result = parsed.toString();
-        return parseInlineStyles(result);
+        return parseInlineStyles(parsed.toString());
     }
 
     private static String parseInlineStyles(String text) {
@@ -184,8 +182,7 @@ public class Parser {
         return text;
     }
 
-    // Central HTML Master Layout Template with Embedded Search Script
-    private static String generatePageHtml(String title, String bodyContent, String date, String author, String feedHtml, boolean isPost) {
+    private static String generatePageHtml(String title, String bodyContent, String date, String author, String feedHtml, String tagsHtml, boolean isPost) {
         String formattedArticle = convertMarkdownToHtml(bodyContent);
 
         StringBuilder html = new StringBuilder();
@@ -209,15 +206,24 @@ public class Parser {
 
         if (feedHtml != null && !feedHtml.isEmpty()) {
             html.append("<br><h2>Recent Posts Feed</h2><br>\n")
-                .append("        <input type='text' id='searchInput' onkeyup='searchPosts()' placeholder='Search posts...' style='width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;'>\n")
+                .append("        <input type='text' id='searchInput' onkeyup='filterPosts()' placeholder='Search posts...' style='width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px;'>\n")
+                .append(tagsHtml)
                 .append("        <ul class='blog-feed' id='postList'>\n").append(feedHtml).append("        </ul>\n")
                 .append("<script>\n")
-                .append("function searchPosts() {\n")
+                .append("let selectedTag = 'all';\n")
+                .append("function filterTag(tag) {\n")
+                .append("  selectedTag = tag;\n")
+                .append("  filterPosts();\n")
+                .append("}\n")
+                .append("function filterPosts() {\n")
                 .append("  let input = document.getElementById('searchInput').value.toLowerCase();\n")
                 .append("  let posts = document.getElementsByClassName('post-item');\n")
                 .append("  for (let i = 0; i < posts.length; i++) {\n")
                 .append("    let text = posts[i].innerText.toLowerCase();\n")
-                .append("    posts[i].style.display = text.includes(input) ? '' : 'none';\n")
+                .append("    let tags = posts[i].getAttribute('data-tags').split(' ');\n")
+                .append("    let matchesSearch = text.includes(input);\n")
+                .append("    let matchesTag = (selectedTag === 'all') || tags.includes(selectedTag);\n")
+                .append("    posts[i].style.display = (matchesSearch && matchesTag) ? '' : 'none';\n")
                 .append("  }\n")
                 .append("}\n")
                 .append("</script>\n");
@@ -229,7 +235,6 @@ public class Parser {
         return html.toString();
     }
 
-    // RSS Feed Generator Engine
     private static void generateRssFeed(List<BlogPost> posts) throws IOException {
         StringBuilder rss = new StringBuilder();
         rss.append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n")
@@ -251,12 +256,10 @@ public class Parser {
         }
 
         rss.append("</channel>\n</rss>");
-
         Files.writeString(Paths.get("rss.xml"), rss.toString());
         System.out.println("Generated RSS Feed: rss.xml");
     }
 
-    // Capitalizes clean titles nicely
     private static String capitalizeTitle(String str) {
         String[] words = str.split("\\s");
         StringBuilder capitalizeWord = new StringBuilder();
