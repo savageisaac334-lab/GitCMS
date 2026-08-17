@@ -171,16 +171,24 @@ public class Parser {
         }
 
         String result = parsed.toString();
-        // Bold formatting: *bold text*
-        result = result.replaceAll("\\\\(.?)\\\\*", "<strong>$1</strong>");
-        // Italic formatting: italic text
-        result = result.replaceAll("\\(.?)\\*", "<em>$1</em>");
-        // Link formatting: FIXED REGEX ESCAPING FOR [Text](url)
-        result = result.replaceAll("\\[([^\\]]+)\\]\\(([^\\)]+)\\)", "<a href='$2'>$1</a>");
+        
+        // Simple HTML inline format parsing
+        result = parseInlineStyles(result);
 
         return result;
     }
 
+    private static String parseInlineStyles(String text) {
+        // Parse *bold*
+        while (text.contains("**")) {
+            text = text.replaceFirst("\\\\", "<strong>").replaceFirst("\\\\", "</strong>");
+        }
+        // Parse italic
+        while (text.contains("*")) {
+            text = text.replaceFirst("\\", "<em>").replaceFirst("\\", "</em>");
+        }
+        return text;
+    }
     // Central HTML Master Layout Template
     private static String generatePageHtml(String title, String bodyContent, String date, String author, String feedHtml, boolean isPost) {
         String formattedArticle = convertMarkdownToHtml(bodyContent);
