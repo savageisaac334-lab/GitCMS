@@ -21,6 +21,9 @@ public class Parser {
         }
     }
 
+    // Your site's deployed domain URL for RSS links
+    private static final String SITE_URL = "https://savageisaac334-lab.github.io/GitCMS";
+
     public static void main(String[] args) {
         try {
             // 1. Setup paths
@@ -28,12 +31,12 @@ public class Parser {
             File postsFolder = new File("Content/Posts");
             List<BlogPost> blogPosts = new ArrayList<>();
 
-            // 2. Scan the "Content/Posts" folder for blog articles
+            // 2. Scan the "Content/Posts" folder for blog articles (.txt or .md)
             if (postsFolder.exists() && postsFolder.isDirectory()) {
-                File[] postFiles = postsFolder.listFiles((dir, name) -> name.endsWith(".txt"));
+                File[] postFiles = postsFolder.listFiles((dir, name) -> name.endsWith(".txt") || name.endsWith(".md"));
                 if (postFiles != null) {
                     for (File file : postFiles) {
-                        String nameWithoutExtension = file.getName().replace(".txt", "");
+                        String nameWithoutExtension = file.getName().replace(".txt", "").replace(".md", "");
                         String rawContent = Files.readString(file.toPath());
                         
                         // Parse Front Matter Metadata
@@ -61,14 +64,14 @@ public class Parser {
             // 4. Generate standard Core Pages (About, Contact, & Online Projects)
             generateCorePage("about", "About Me", "2026-07-14", "Murungi Isaac");
             generateCorePage("contact", "Contact Me", "2026-07-14", "Murungi Isaac");
-            generateCorePage("online-projects", "Online Projects", "2026-07-17", "MurungiIsaac");
+            generateCorePage("online-projects", "Online Projects", "2026-07-17", "Murungi Isaac");
 
             // 5. Build dynamic index feed links
             StringBuilder feedBuilder = new StringBuilder();
             for (BlogPost post : blogPosts) {
                 feedBuilder.append("<li><span class='date'>")
                            .append(post.date)
-                           .append("</span> - <a href='./") // Fixed relative link for feed items
+                           .append("</span> - <a href='./")
                            .append(post.fileName)
                            .append("'>")
                            .append(post.title)
@@ -78,10 +81,15 @@ public class Parser {
             }
 
             // 6. Generate the main Index Home Page with the feed embedded
-            String indexIntro = Files.readString(Paths.get("Content/index.txt"));
+            String indexIntro = Files.exists(Paths.get("Content/index.txt")) 
+                ? Files.readString(Paths.get("Content/index.txt")) 
+                : "Welcome to GitCMS!";
             String indexHtml = generatePageHtml("Welcome to GitCMS", indexIntro, "2026-07-14", "Isaac", feedBuilder.toString(), false);
             Files.writeString(Paths.get("index.html"), indexHtml);
             System.out.println("Generated Index Page: index.html");
+
+            // 7. Generate RSS Feed XML
+            generateRssFeed(blogPosts);
 
         } catch (Exception e) {
             System.out.println("Error running engine: " + e.getMessage());
@@ -89,7 +97,7 @@ public class Parser {
         }
     }
 
-    // Front Matter Parsing Engine (Robust Version)
+    // Front Matter Parsing Engine
     private static String parseFrontMatter(String rawContent, Map<String, String> metadata) {
         rawContent = rawContent.trim();
         
@@ -139,17 +147,52 @@ public class Parser {
         }
     }
 
-    // Central HTML Master Layout Template (Updated for GitHub Pages Deployment)
+    // Custom Markdown-to-HTML engine logic
+    private static String convertMarkdownToHtml(String text) {
+        if (text == null || text.isEmpty()) return "";
+
+        StringBuilder parsed = new StringBuilder();
+        String[] lines = text.split("\\r?\\n");
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+
+            if (trimmed.startsWith("### ")) {
+                parsed.append("<h3>").append(trimmed.substring(4)).append("</h3>\n");
+            } else if (trimmed.startsWith("## ")) {
+                parsed.append("<h2>").append(trimmed.substring(3)).append("</h2>\n");
+            } else if (trimmed.startsWith("# ")) {
+                parsed.append("<h1>").append(trimmed.substring(2)).append("</h1>\n");
+            } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+                parsed.append("<li>").append(trimmed.substring(2)).append("</li>\n");
+            } else {
+                parsed.append(line).append("<br>\n");
+            }
+        }
+
+        String result = parsed.toString();
+        // Bold formatting: *bold text*
+        result = result.replaceAll("\\\\(.?)\\\\*", "<strong>$1</strong>");
+        // Italic formatting: italic text
+        result = result.replaceAll("\\(.?)\\*", "<em>$1</em>");
+        // Link formatting: [Text](url)
+        result = result.replaceAll("\\[(.?)\\]\\((.?)\\)", "<a href='$2'>$1</a>");
+
+        return result;
+    }
+
+    // Central HTML Master Layout Template
     private static String generatePageHtml(String title, String bodyContent, String date, String author, String feedHtml, boolean isPost) {
+        String formattedArticle = convertMarkdownToHtml(bodyContent);
+
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html>\n<html lang='en'>\n<head>\n")
             .append("    <meta charset='UTF-8'>\n")
             .append("    <title>").append(title).append("</title>\n")
-            // UPDATED: Added './' so GitHub Pages finds style.css perfectly
             .append("    <link rel='stylesheet' href='./style.css'>\n")
+            .append("    <link rel='alternate' type='application/rss+xml' title='GitCMS RSS Feed' href='./rss.xml'>\n")
             .append("</head>\n<body>\n")
             .append("<nav>\n    <div class='nav-container'>\n")
-            // UPDATED: Added explicitly explicit relative pathways for robust navigation layout
             .append("        <a href='./about.html'>ABOUT</a>\n")
             .append("        <a href='./online-projects.html'>ONLINE PROJECTS</a>\n")
             .append("        <a href='./contact.html'>CONTACT</a>\n")
@@ -159,7 +202,7 @@ public class Parser {
             .append("    <div class='container'>\n")
             .append("        <h1>").append(title).append("</h1>\n")
             .append("        <p class='publish-date'><em>Published on: ").append(date).append(" | Author: ").append(author).append("</em></p>\n<hr><br>\n")
-            .append("        <article>").append(bodyContent.replace("\n", "<br>\n")).append("</article>\n");
+            .append("        <article>").append(formattedArticle).append("</article>\n");
 
         if (feedHtml != null && !feedHtml.isEmpty()) {
             html.append("<br><h2>Recent Posts Feed</h2><br>\n")
@@ -167,9 +210,36 @@ public class Parser {
         }
 
         html.append("    </div>\n")
-            .append("    <footer>&copy; 2026 GitCMS. Generated automatically using Java.</footer>\n")
+            .append("    <footer>&copy; 2026 GitCMS. Generated automatically using Java. | <a href='./rss.xml'>RSS Feed</a></footer>\n")
             .append("</div>\n</body>\n</html>");
         return html.toString();
+    }
+
+    // RSS Feed Generator Engine
+    private static void generateRssFeed(List<BlogPost> posts) throws IOException {
+        StringBuilder rss = new StringBuilder();
+        rss.append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n")
+           .append("<rss version=\"2.0\">\n")
+           .append("<channel>\n")
+           .append("  <title>GitCMS Blog Feed</title>\n")
+           .append("  <link>").append(SITE_URL).append("/index.html</link>\n")
+           .append("  <description>Automated blog feed generated by Java GitCMS engine.</description>\n")
+           .append("  <language>en-us</language>\n");
+
+        for (BlogPost post : posts) {
+            rss.append("  <item>\n")
+               .append("    <title>").append(post.title).append("</title>\n")
+               .append("    <link>").append(SITE_URL).append("/").append(post.fileName).append("</link>\n")
+               .append("    <description><![CDATA[").append(post.content).append("]]></description>\n")
+               .append("    <author>").append(post.author).append("</author>\n")
+               .append("    <pubDate>").append(post.date).append("</pubDate>\n")
+               .append("  </item>\n");
+        }
+
+        rss.append("</channel>\n</rss>");
+
+        Files.writeString(Paths.get("rss.xml"), rss.toString());
+        System.out.println("Generated RSS Feed: rss.xml");
     }
 
     // Capitalizes clean titles nicely
