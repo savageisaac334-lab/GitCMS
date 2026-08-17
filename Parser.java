@@ -66,21 +66,21 @@ public class Parser {
             generateCorePage("contact", "Contact Me", "2026-07-14", "Murungi Isaac");
             generateCorePage("online-projects", "Online Projects", "2026-07-17", "Murungi Isaac");
 
-            // 5. Build dynamic index feed links
+            // 5. Build dynamic index feed links with searchable attributes
             StringBuilder feedBuilder = new StringBuilder();
             for (BlogPost post : blogPosts) {
-                feedBuilder.append("<li><span class='date'>")
+                feedBuilder.append("<li class='post-item'><span class='date'>")
                            .append(post.date)
                            .append("</span> - <a href='./")
                            .append(post.fileName)
-                           .append("'>")
+                           .append("' class='post-title'>")
                            .append(post.title)
                            .append("</a> <span class='author'>by ")
                            .append(post.author)
                            .append("</span></li>\n");
             }
 
-            // 6. Generate the main Index Home Page with the feed embedded
+            // 6. Generate the main Index Home Page with Search Bar embedded
             String indexIntro = Files.exists(Paths.get("Content/index.txt")) 
                 ? Files.readString(Paths.get("Content/index.txt")) 
                 : "Welcome to GitCMS!";
@@ -171,25 +171,20 @@ public class Parser {
         }
 
         String result = parsed.toString();
-        
-        // Simple HTML inline format parsing
-        result = parseInlineStyles(result);
-
-        return result;
+        return parseInlineStyles(result);
     }
 
     private static String parseInlineStyles(String text) {
-        // Parse *bold*
         while (text.contains("**")) {
             text = text.replaceFirst("\\\\", "<strong>").replaceFirst("\\\\", "</strong>");
         }
-        // Parse italic
         while (text.contains("*")) {
             text = text.replaceFirst("\\", "<em>").replaceFirst("\\", "</em>");
         }
         return text;
     }
-    // Central HTML Master Layout Template
+
+    // Central HTML Master Layout Template with Embedded Search Script
     private static String generatePageHtml(String title, String bodyContent, String date, String author, String feedHtml, boolean isPost) {
         String formattedArticle = convertMarkdownToHtml(bodyContent);
 
@@ -214,7 +209,18 @@ public class Parser {
 
         if (feedHtml != null && !feedHtml.isEmpty()) {
             html.append("<br><h2>Recent Posts Feed</h2><br>\n")
-                .append("<ul class='blog-feed'>\n").append(feedHtml).append("</ul>\n");
+                .append("        <input type='text' id='searchInput' onkeyup='searchPosts()' placeholder='Search posts...' style='width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;'>\n")
+                .append("        <ul class='blog-feed' id='postList'>\n").append(feedHtml).append("        </ul>\n")
+                .append("<script>\n")
+                .append("function searchPosts() {\n")
+                .append("  let input = document.getElementById('searchInput').value.toLowerCase();\n")
+                .append("  let posts = document.getElementsByClassName('post-item');\n")
+                .append("  for (let i = 0; i < posts.length; i++) {\n")
+                .append("    let text = posts[i].innerText.toLowerCase();\n")
+                .append("    posts[i].style.display = text.includes(input) ? '' : 'none';\n")
+                .append("  }\n")
+                .append("}\n")
+                .append("</script>\n");
         }
 
         html.append("    </div>\n")
