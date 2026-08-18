@@ -158,3 +158,18 @@ footer {
     padding: 20px 0;
     border-top: 1px solid #e2e8f0;
 }
+
+.tags {
+    margin: 10px 0;
+}
+
+.tag-badge {
+    background-color: #2d3748;
+    color: #61afef;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-right: 5px;
+    display: inline-block;
+}
